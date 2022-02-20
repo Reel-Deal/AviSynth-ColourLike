@@ -1,0 +1,198 @@
+Filter: ColourLike (http://forum.doom9.org/showthread.php?t=96308) / (http://avisynth.nl/index.php/ColourLike)
+This was mentioned in a recent thread (http://forum.doom9.org/showthread.php?t=95574) -- thanks to @communist + everyone else who fed me with ideas, pointers & encouragement.
+___________________________________________
+
+ColourLike
+
+Brief description: Makes a clip look like a 'reference' clip by adjusting each colour channel.
+
+Search keywords: colour, color, ColorLike, curve, gamma, levels, channel.
+
+Full description:
+
+WriteHistogram(clip, string outputFile, int every = 1) - computes histograms for each channel of the YV12 clip and stores the results in outputFile. If e.g. every=3 is specified, only every 3rd frame of clip is sampled.
+
+ColourLike(clip source, string sourceHistogramFile, string referenceHistogramFile) - takes a YV12 clip source and histogram files for this clip and a reference clip, and applies curves to each channel, chosen to make source look as much like the reference as possible.
+
+Examples:
+Here are some examples from a case where the same clip is present in (unrelated) DVD and VHS sources.
+
+First generate the histograms:
+
+dvd.WriteHistogram("dvd hist 100.txt", 100)
+vhs.WriteHistogram("vhs hist 100.txt", 100)
+
+Then, say, adjust the VHS to look as much like the DVD as possible:
+vhs.colourlike("vhs hist.txt", "dvd hist.txt")
+
+Or adjust the DVD to look as much like the VHS as possible
+dvd.colourlike("dvd hist.txt", "vhs hist.txt")
+
+
+Notes:
+- Generating histograms runs at about 75fps on DVD source on my PC (and I think most of that time is MPEG decoding), but this still seems slow because the entire file needs to be scanned. As in the example, you can specify quite a large value of every without affecting the results too much.
+
+- You only need to generate the histograms once, so you probably want the WriteHistogram calls in a separate AVS to ColourLike.
+
+- This filter can be used on completely unrelated clips (which I haven't tried yet); I don't actually think that is a particularly meaningful thing to do, so I'm pretty pessimistic about the results -- but if you do happen to try it, see what the results look like when you just use it on the Y channel, and also when you just use it on the U&V channels. (Use MergeLuma or MergeChroma with source and the output of this filter.)
+
+- For the record, I'm not terribly happy with the results of the filter overall -- as I noted in that other thread, I think there is 'crosstalk' between the colour channels that this process does not account for. So I think a proper colour matching function will have to use something more sophisticated than channel-curves.
+
+********************************************************************************
+Changelog:
+
+Version 1.0.1 (2022/01/30)
+    - Converted to AviSynth 2.6 / AviSynth+ plugin
+    - Added resource file
+    - x86/x64 plugins compiled with MSVC 2019
+********************************************************************************
+
+Additional documentation Edited by StainlessS, on doom9:
+https://forum.doom9.org/showthread.php?p=1582935#post1582935
+
+ColourLike:  http://forum.doom9.org/showthread.php?t=96308
+
+by mg262,
+
+Search keywords: colour, color, ColorLike, curve, gamma, levels, channel.
+
+Brief description: Makes a clip look like a 'reference' clip by adjusting each colour channel.
+
+Full description:
+
+  YV12 and it now has RGB32 support.
+
+  It also has a polar-YUV mode, which as its 3 channels has
+      1) Y,
+      2) Length of the UV-vector (saturation)
+      3) Angle of the UV-vector. (hue)
+    Currently the angle is not changed by the filter (ie does not change hue).
+
+  Be careful to feed the filter with the right kind of histogram... YUV, RGB and Polar-YUV are three different kinds. 
+
+
+  Functions:
+
+  
+    WriteHistogram(clip,string outputfile, int  "every"=1)
+      YV12, RGB32
+      Computes histograms for each channel of the clip and stores the results in outputFile.
+      If e.g.  every=3 is specified, only every 3rd frame of clip is sampled.
+      # Returns original clip (No Constructor)
+
+
+    #CopyHistogram(string InputFilename, string OutputFilename) 
+    #  Copy a histogram ie make duplicate file.
+    #  Not Implemented (Implememted in source but commented out) 
+    
+    
+    WritePolarHistogram(clip,string outputfile, int  "every"=1)
+      YV12 Only, Emits a "Requires RGB32" message if NOT YV12 ???
+      Computes polar histograms for each channel of the clip and stores the results in outputFile.
+      If e.g.  every=3 is specified, only every 3rd frame of clip is sampled.
+      # Returns original clip (No Constructor)
+    
+        
+    CopyPolarHistogram(string InputFilename, string OutputFilename)
+      Copy a Polar histogram ie make duplicate file.
+      # Returns 0
+    
+    
+    WriteColourLikeCurve(string OutputFilename, string sourceHistogramFile, string referenceHistogramFile)
+      Writes YUV Equalising curves
+      # Returns 0
+    
+    
+    ColourLike(clip source,string sourceHistogramFile,string referenceHistogramFile, \
+              bool "affectfirst"=true, bool "affectsecond"=true,bool "affectthird"=true)
+      YV12, RGB32 
+      Takes a clip source and histogram files for this clip and a reference clip, and applies curves to each channel
+      chosen, to make source look as much like the reference as possible.
+    
+      
+    PolarColourLike(clip source, string sourceHistogramFile,string referenceHistogramFile, \
+           bool "affectfirst"=true, bool "affectsecond"=true,bool "affectthird")
+      YV12 Only # RGB32, Not implemented for RGB32 depite error msg saying YV12 & RGB32 only
+      Takes a clip source and histogram files for this clip and a reference clip, and applies curves to the clip,
+      to make source look as much like the reference as possible.
+      affectfirst, affects Y channel
+      affectsecond, affects length of the UV-vector (ie SATURATION)
+      affectthird, if supplied is IGNORED, (angle of the UV-vector) (ie Does not change HUE)   
+      The first true tells the filter to affect luma, and the second true tells it to affect saturation.
+
+  
+    ApplyAMP(clip, string CurveFilename)
+      YV12, RGB32
+      Affects Y channel only for YV12
+
+
+    SaturationGamma(clip, float gamma, float "fixed"=127.0)
+      YV12
+      Affects U & V channels Only (applies gamma to length of the UV-vector [SAT])
+      Y channel untouched
+        I've also added a saturation gamma function. The idea is this. A normal gamma operation can brighten or darken
+        midtones while (approximately) leaving highlights and shadows alone. The saturation Gamma can increase or decrease
+        the saturation of areas with medium saturation, while leaving greys and very saturated areas alone. 
+        The fixed parameter gives a "very saturated" saturation level [measured as a distance from (128,128)] that will
+        be left alone by the function... but it will work fine if you leave this number at default.
+        The results are (in my view) quite interesting, so do give it a go!
+        
+
+----------------
+
+Examples:
+
+  Here are some examples from a case where the same clip is present in (unrelated) DVD and VHS sources.
+
+  First generate the histograms:
+
+  dvd.WriteHistogram("dvd hist 100.txt", 100)
+  vhs.WriteHistogram("vhs hist 100.txt", 100)
+
+  Then, say, adjust the VHS to look as much like the DVD as possible:
+    vhs.colourlike("vhs hist.txt", "dvd hist.txt")
+  or 
+    vhs.colourlike("vhs hist.txt", "dvd hist.txt", true, false, false)
+      which means: just process Y (respectively R) but ignore U and V (respectively G and B).
+
+  Or adjust the DVD to look as much like the VHS as possible
+  dvd.colourlike("dvd hist.txt", "vhs hist.txt")
+
+  Polar:
+    dvd
+    WritePolarHistogram("dvd polar hist 1.txt", 1)
+    vhs
+    WritePolarHistogram("vhs polar hist 1.txt", 1)
+    
+    dvd.polarcolourlike("dvd polar hist 1.txt", "vhs polar hist 1.txt", true, true, true) #last 'true' is ignored
+
+      The first true tells the filter to affect luma, and the second true tells it to affect saturation.
+      This should in theory change the brightness, contrast, saturation, etc but not affect hue.
+      I haven't found this to be very useful in practice.
+      I think a variant which changed hue would be more useful, but this is ill-defined... or more precisely, 
+      because hue is represented by a circle rather than a line, there is a whole family of 'hue-equalising' filters...
+
+------------------------------------------------------------------------------------------------
+Notes:
+  Generating histograms runs at about 75fps on DVD source on my PC (and I think most of that time is MPEG decoding), but
+  this still seems slow because the entire file needs to be scanned. As in the example, you can specify quite a large
+  value of 'every' without affecting the results too much.
+
+  You only need to generate the histograms once, so you probably want the WriteHistogram calls in a separate AVS to
+  ColourLike.
+
+  This filter can be used on completely unrelated clips (which I haven't tried yet); I don't actually think that is a
+  particularly meaningful thing to do, so I'm pretty pessimistic about the results -- but if you do happen to try it,
+  see what the results look like when you just use it on the Y channel, and also when you just use it on the U&V channels.
+  (Use MergeLuma or MergeChroma with source and the output of this filter.)
+
+  For the record, I'm not terribly happy with the results of the filter overall -- as I noted in that other thread, I
+  think there is 'crosstalk' between the colour channels that this process does not account for. So I think a proper colour
+  matching function will have to use something more sophisticated than channel-curves.
+
+The 'other thread' mentioned is here:
+http://forum.doom9.org/showthread.php?t=95574
+
+------------------------------------------------------------------------------------------------------------------------
+Above text, mostly words of author mg262, but edited from various posts on doom9 and had some text inserted to either
+clarify or denote usage.
